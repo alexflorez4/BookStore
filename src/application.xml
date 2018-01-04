@@ -1,0 +1,139 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd">
+
+    <!--Transaction Manager for the project-->
+    <!--Hibernate-->
+    <!--<bean id="transactionManager" class="org.springframework.orm.hibernate4.HibernateTransactionManager" autowire="byType"/>-->
+    <!--JPA-->
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager" autowire="byType"/>
+    <!--<bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">-->
+        <!--<property name="dataSource" ref="dataSource"/>-->
+    <!--</bean>-->
+
+    <!-- DataSource -->
+
+    <!-- Simple bean for db connection / very inefficient class.  Only for fast testing. -->
+    <!--<bean id="dataSource" class="org.springframework.jdbc.datasource.SimpleDriverDataSource">-->
+        <!--<property name="driverClass" value="org.hsqldb.jdbcDriver"/>-->
+        <!--<property name="url" value="jdbc:hsqldb:file:database.dat;shutdown=true"/>-->
+        <!--<property name="username" value="sa"/>-->
+        <!--<property name="password" value=""/>-->
+    <!--</bean>-->
+
+    <!-- Bean for deploying the app in an application server  -->
+    <!-- <bean id="dataSource" class="org.springframework.jndi.JndiObjectFactoryBean">
+        <property name="jndiName" value="jdbc/Books"/>  the value is given by the system admin.  It's the name given in the server
+     </bean> -->
+
+    <bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource" destroy-method="close">
+        <property name="driverClassName" value="org.hsqldb.jdbcDriver"/>
+        <property name="url" value="jdbc:hsqldb:file:database.dat;shutdown=true"/>
+        <property name="username" value="sa"/>
+        <property name="password" value=""/>
+    </bean>
+
+    <!-- Templates -->
+    <!--<bean id="hibernateTemplate" class="org.springframework.orm.hibernate4.HibernateTemplate" autowire="byName" />-->
+
+    <!--Hibernate Session Factory-->
+    <!--<bean id="sessionFactory" class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">-->
+        <!--<property name="dataSource" ref="dataSource"/>-->
+        <!--<property name="packagesToScan">-->
+            <!--<list>-->
+                <!--<value>com.vpp.domain</value>-->
+            <!--</list>-->
+        <!--</property>-->
+        <!--<property name="hibernateProperties">-->
+            <!--<props>-->
+                <!--<prop key="hibernate.show_sql">true</prop>-->
+                <!--<prop key="hibernate.hbm2ddl.auto">update</prop>-->
+            <!--</props>-->
+        <!--</property>-->
+    <!--</bean>-->
+
+    <!--JPA Manager Factory Bean-->
+    <bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+        <property name="jpaVendorAdapter">
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">
+                <property name="showSql" value="true"/>
+                <property name="generateDdl" value="true"/>
+            </bean>
+        </property>
+        <property name="dataSource" ref="dataSource"/>
+    </bean>
+
+    <bean id="jdbcTemplate" class="org.springframework.jdbc.core.JdbcTemplate" autowire="byName"/>
+        <!--<property name="dataSource" ref="dataSource"/>-->
+    <!--</bean>-->
+
+    <!-- DAO Beans -->
+    <!--<bean id="bookDao" class="com.vpp.data.BookDaoJdbcImpl" init-method="createTables">-->
+        <!--<constructor-arg ref="jdbcTemplate"/>-->
+    <!--</bean>-->
+
+    <!-- Services Beans -->
+    <!--<bean id="accountService" class="com.vpp.services.AccountServiceImpl"/>-->
+
+    <!--<bean id="purchasingService" class="com.vpp.services.PurchasingServiceImpl" scope="prototype" autowire="constructor"/>-->
+
+
+    <!--Timing Bean-->
+    <!--<bean id="bookService" class="com.vpp.services.BookServiceTimingProxy">-->
+        <!--<property name="originalBookService" ref="bookServiceTarget"/>-->
+    <!--</bean>-->
+
+    <!--Advice: Old Fashion... see new impl below-->
+    <!--<bean id="loggingAdvice" class="com.vpp.advice.SimpleLoggingAdvice"/>-->
+    <!--&lt;!&ndash;Generated Proxies&ndash;&gt;-->
+    <!--<bean id="bookService" class="org.springframework.aop.framework.ProxyFactoryBean">-->
+        <!--<property name="proxyInterfaces" value="com.vpp.services.BookService"/>-->
+        <!--<property name="interceptorNames">-->
+            <!--<list>-->
+                <!--<value>loggingAdvice</value>-->
+            <!--</list>-->
+        <!--</property>-->
+        <!--<property name="target" ref="bookServiceTarget"/>-->
+    <!--</bean>-->
+
+    <!--Advice Note:  This XML style is being replaced with Annotations and the aop aspect autoproxy tag -->
+    <!--<bean id="performanceTimingAdviceId" class="com.vpp.advice.PerformanceTimingAdvice"/>-->
+    <!--XML version-->
+    <!--<aop:config>-->
+        <!--<aop:pointcut expression="execution( * com.vpp.services.*.* (..))" id="allServiceMethods"/>-->
+        <!--<aop:aspect ref="performanceTimingAdviceId">-->
+            <!--<aop:around method="performTimingMeasurement" pointcut-ref="allServiceMethods"/>-->
+            <!--<aop:before method="beforeAdviceTesting" pointcut="execution (java.util.List com.vpp.services.*.* (..))"/>-->
+        <!--</aop:aspect>-->
+    <!--</aop:config>-->
+
+    <!--Annotation version-->
+    <aop:aspectj-autoproxy/>
+
+    <!-- Transaction Configuration -->
+    <!--only if you call your transaction manager "transactionManager", then you don't need to added in the below tag-->
+    <!--Option #1 - tx annotation driven-->
+    <tx:annotation-driven/>
+
+    <!--Option # 2 tx namespace-->
+    <!--<tx:advice id="allMethodsToBeTransactional">-->
+        <!--<tx:attributes>-->
+            <!--<tx:method name="*"/>-->
+        <!--</tx:attributes>-->
+    <!--</tx:advice>-->
+    <!--<aop:config>-->
+        <!--<aop:advisor advice-ref="allMethodsToBeTransactional" pointcut="execution ( * com.vpp.services..*.*(..))"/>-->
+    <!--</aop:config>-->
+
+    <!--AutoWired -->  <!-- IMPORTANT: This line is needed for the program to use the annotations-->
+    <context:component-scan base-package="com.vpp"/>
+
+
+</beans>
